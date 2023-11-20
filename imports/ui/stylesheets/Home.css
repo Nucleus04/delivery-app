@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+
+.main-container {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+.menu-container {
+    position: absolute;
+    width: 400px;
+    background-color: rgb(246, 246, 246);
+    transform: translate(15px, 15px);
+    border-radius: 8px;
+    z-index: 10;
+    box-sizing: border-box;
+    padding: 15px;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.location-form-container {
+    width: 100%;
+    font-family: 'Nunito', sans-serif;
+}
+
+.search-box-container-location {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    background-color: white;
+    border-radius: 10px;
+}
+
+.margin-top-10 {
+    margin-top: 10px;
+}
+
+.display-none {
+    display: none;
+}
+
+.input-starting-point {
+    width: 100%;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background-color: rgb(229, 229, 229);
+    box-sizing: border-box;
+    padding: 15px;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.location-search-button {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    font-family: inherit;
+    border: none;
+    font-weight: 700;
+}
+
+.button-blue {
+    background-color: rgb(49, 168, 232);
+}
+
+.button-green {
+    background-color: rgb(198, 255, 113);
+}
+
+.button-green:hover {
+    background-color: rgb(106, 148, 42);
+}
+
+.button-green:active {
+    background-color: rgb(106, 148, 42);
+}
+
+.button-red {
+    background-color: rgb(255, 91, 91);
+}
+
+.suggested-place-container {
+    border-radius: 8px;
+}
+
+.fontsize-14 {
+    font-size: 14pt;
+}
+
+.fontsize-12 {
+    font-size: 12pt;
+}
+
+.fontsize-11 {
+    font-size: 11pt;
+}
+
+.fontsize-10 {
+    font-size: 10pt;
+}
+
+.font-weight-600 {
+    font-weight: 600;
+}
+
+
+.margin-top-5 {
+    margin-top: 5px;
+}
+
+.location-suggested-item {
+    width: 100%;
+    background-color: rgb(255, 255, 255);
+    height: 40px;
+    display: flex;
+    border-bottom: solid 0.5px rgb(165, 165, 165);
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+.location-suggested-item:hover {
+    background-color: rgb(193, 193, 193);
+}
+
+.route-container {
+    width: 100%;
+    background-color: rgb(246, 246, 246);
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.route-item-container {
+    background-color: white;
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 8px;
+
+}
+
+.route-item-container p {
+    margin: 0;
+}
+
+.direction-manuevers-container {
+    width: 100%;
+    height: 250px;
+    background-color: rgb(255, 255, 255);
+    box-sizing: border-box;
+    padding: 10px;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+
+
+
+/**direction css**/
+.direction-main-container {
+    position: absolute;
+    right: 0;
+    z-index: 1;
+    width: 300px;
+    background-color: white;
+    margin: 15px;
+    border-radius: 10px;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+.direction-main-container ul {
+    max-height: 500px;
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+@media screen and (max-width: 600px) {
+    .main-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .menu-container {
+        width: 90%;
+        padding: 0px;
+        transform: none;
+        padding-top: 15px;
+    }
+}
