@@ -10,7 +10,6 @@ class SearchPlace {
     methods() {
         return Meteor.methods({
             [METHODS.SEARCH_START_POINT]: async function (query) {
-                console.log(query);
                 try {
                     let MapBox = new mapbox();
                     let data = await MapBox.search_place(query);

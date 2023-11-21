@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import MapboxWatcher from "../../api/classes/client/MapboxWatcher";
 import mapboxgl from "mapbox-gl";
 import { coordinatesSimulate } from "./simulation_data";
+import RouteWatcher from "../../api/classes/client/RouteWatcher";
 
 class LocationForm extends Component {
     constructor(props) {
@@ -176,23 +177,32 @@ class LocationForm extends Component {
         for (const route of routes) {
             const data = {
                 start: {
-                    center: "",
+                    center: coordinatesSimulate[0],
                 },
-                destination: [],
+                destination: [coordinatesSimulate[300], coordinatesSimulate[coordinatesSimulate.length - 1]],
                 depart_at: this.state.depart_at,
             }
-            data.start.center = route[0];
-            route.shift();
-            data.destination = route;
+            // data.start.center = route[0];
+            // route.shift();
+            // data.destination = route;
             const geojson = await MapboxWatcher.search_direction(data);
             const { color, id } = this.drawRoute(geojson.routes[0].geometry);
             direction.push({ geojson: geojson, color: color, id: id });
         }
 
         let result = await Promise.all(direction);
+        this.assignRoute(result);
+
         this.setState({
             direction: result,
         })
+    }
+    /**
+     * Send request to assign route in backend to rider
+     * @param {Array} route optimize routes
+     */
+    assignRoute(route) {
+        RouteWatcher.assign(route);
     }
     /**
      * function for marking parcel locations in the map via click event (admin)
@@ -512,27 +522,6 @@ class LocationForm extends Component {
             console.log("Reach Destination");
             this.state.routes[route.i1].shift();
         }
-        // const data = {
-        //     start: {
-        //         center: [userCoordinates.lng, userCoordinates.lat],
-        //     },
-        //     destination: this.state.routes[route.i1],
-        //     depart_at: this.state.depart_at,
-        // }
-        // const geojson = await MapboxWatcher.search_direction(data);
-        // this.state.map.removeLayer(`${route.id}`);
-        // this.state.map.removeSource(`${route.id}`);
-        // const { color } = this.drawRoute(geojson.routes[0].geometry, null, route.id);
-        // MapboxWatcher.setDirection(geojson.routes[0].legs[0].steps[0].maneuver.instruction);
-        // this.setState((prevState) => {
-        //     const myDirection = [...prevState.direction];
-        //     myDirection[route.i1] = { geojson: geojson, color: color, id: route.id };
-        //     return {
-        //         direction: myDirection,
-        //     }
-
-        // });
-
         const updateCoordinates = (newCoordinates) => {
             this.setState(prevState => ({
                 direction: prevState.direction.map(directionItem => ({
@@ -568,33 +557,6 @@ class LocationForm extends Component {
         }
 
     }
-    // async simulateTracker() {
-    //     function delay(ms) {
-    //         return new Promise(resolve => setTimeout(resolve, ms));
-    //     }
-    //     console.log("simulating", coordinatesSimulate);
-    //     const marker = new mapboxgl.Marker();
-    //     marker.setLngLat(coordinatesSimulate[0])
-    //         .addTo(this.state.map);
-    //     await delay(5000);
-    //     for (let i = 0; i < coordinatesSimulate.length; i++) {
-
-    //         this.state.map.setCenter(coordinatesSimulate[i]);
-    //         marker.remove();
-    //         marker.setLngLat(coordinatesSimulate[i])
-    //             .addTo(this.state.map);
-    //         let route = {
-    //             i1: 0,
-    //             id: "1",
-    //         }
-    //         this.onSimulate(route, { lng: coordinatesSimulate[i][0], lat: coordinatesSimulate[i][1] }, i == 0);
-    //         this.setState({
-    //             myPosition: JSON.stringify(coordinatesSimulate[i]),
-    //         })
-    //         await delay(200);
-    //     }
-
-    // }
     componentDidMount() {
 
         const localDate = new Date();
@@ -770,7 +732,7 @@ class LocationForm extends Component {
                         return (
                             <div className="route-container margin-top-10" key={index}>
 
-                                {/* <div className="route-item-container margin-top-5" style={{ backgroundColor: direction.color }}>
+                                <div className="route-item-container margin-top-5" style={{ backgroundColor: direction.color }}>
                                     <p className="font-size-10">Rider {index + 1}</p>
                                     <input type="datetime-local" placeholder="departure" onChange={this.onDepartureChange.bind(this)} /> <button onClick={() => this.onEnter(index, direction.id)}>depart</button>
 
@@ -791,7 +753,7 @@ class LocationForm extends Component {
                                             )
                                         })
                                     }
-                                </div> */}
+                                </div>
 
 
                             </div>

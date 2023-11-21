@@ -28,7 +28,7 @@ class LoginComponent extends Component {
             console.log("Failed to login")
         }
     }
-    onSignup() {
+    async onSignup() {
         if (this.state.username && this.state.password) {
             Accounts.createUser({
                 username: this.state.username,
@@ -38,8 +38,9 @@ class LoginComponent extends Component {
                 }
             }, (error) => {
                 if (error) {
-                    console.log(error);
+                    alert(error.reason);
                 } else {
+                    AccountsWatcher.createProfile(this.state.role);
                     this.setState({
                         username: "",
                         password: "",
