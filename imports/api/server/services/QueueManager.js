@@ -10,7 +10,7 @@ class QueueManager {
      * @returns 
      */
     get_available_riders(count) {
-        return this.#db.find({ availability: true }, { limit: count }).fetch();
+        return this.#db.find({ availability: true, role: "rider" }, { limit: count }).fetch();
     }
 }
 

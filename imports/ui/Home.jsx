@@ -3,7 +3,6 @@ import "./stylesheets/Home.css";
 import LocationForm from "./components/LocationForm";
 import MapboxWatcher from "../api/classes/client/MapboxWatcher";
 import Direction from "./components/Directions";
-import { Meteor } from "meteor/meteor";
 import AccountsWatcher from "../api/classes/client/AccountsWatcher";
 import Rider from "./components/Rider";
 
@@ -31,18 +30,20 @@ class Home extends Component {
         AccountsWatcher.initiateWatch("location");
         return (
             <div className="main-container" id="map">
-                <div className="menu-container">
-                    {
-                        this.state.role === "rider" ? <Rider mapObject={this.state.map} />
-                            :
-                            this.state.role === "admin" ?
-
+                {
+                    this.state.role === "rider" ?
+                        <div className="menu-container-rider">
+                            <Rider mapObject={this.state.map} />
+                        </div>
+                        :
+                        this.state.role === "admin" ?
+                            <div className="menu-container">
                                 <LocationForm mapObject={this.state.map} />
+                            </div>
+                            :
+                            null
+                }
 
-                                :
-                                null
-                    }
-                </div>
                 {
                     MapboxWatcher.Direction ? <Direction /> : null
                 }

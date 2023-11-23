@@ -10,6 +10,13 @@ class RoutePublication {
             return route.find({ riderId: riderId });
         })
     }
+
+
+    trackingRider() {
+        return Meteor.publish(PUBLICATION.TRACK_RIDER, () => {
+            return route.find({ status: "ongoing" });
+        })
+    }
 }
 
 

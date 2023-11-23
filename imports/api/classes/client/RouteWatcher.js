@@ -1,6 +1,7 @@
 import Watcher from "./Watcher";
 import Client from "./Client";
-import { ROUTING } from "../../common";
+import { PUBLICATION, ROUTING } from "../../common";
+import { route } from "../../db";
 
 
 class RouteWatcher extends Watcher {
@@ -16,6 +17,10 @@ class RouteWatcher extends Watcher {
                 console.log(error);
             });
         });
+    }
+
+    get TrackingRider() {
+        return route.find({}).fetch();
     }
 }
 

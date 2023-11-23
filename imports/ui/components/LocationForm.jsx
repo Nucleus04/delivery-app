@@ -1,14 +1,18 @@
 import React, { Component } from "react";
 import MapboxWatcher from "../../api/classes/client/MapboxWatcher";
 import mapboxgl from "mapbox-gl";
-import { coordinatesSimulate } from "./simulation_data";
 import RouteWatcher from "../../api/classes/client/RouteWatcher";
+import { withTracker } from "meteor/react-meteor-data";
+import { PUBLICATION } from "../../api/common";
+import RiderWatcher from "../../api/classes/client/RiderWatcher";
+import { coordinatesSimulate } from "./simulation_data";
 
 class LocationForm extends Component {
     constructor(props) {
         super(props);
         this.props = props;
         MapboxWatcher.setWatcher(this, "location");
+        RouteWatcher.setWatcher(this, "location");
         this.simulateRef = React.createRef();
         this.state = {
             starting_point_location: "",
@@ -25,10 +29,8 @@ class LocationForm extends Component {
             simulating: {
                 state: false
             },
-            isRider: false,
-            isSelectingRole: true,
-            role: "",
             myPosition: null,
+            riderMarker: [],
         }
 
     }
@@ -126,7 +128,7 @@ class LocationForm extends Component {
      * @param {*} defaultId 
      * @returns 
      */
-    drawRoute(geometry, defaultColor = "blue", defaultId = null) {
+    drawRoute(geometry, defaultColor = null, defaultId = null) {
         let id = null;
         if (defaultId) {
             id = defaultId;
@@ -179,7 +181,7 @@ class LocationForm extends Component {
                 start: {
                     center: coordinatesSimulate[0],
                 },
-                destination: [coordinatesSimulate[300], coordinatesSimulate[coordinatesSimulate.length - 1]],
+                destination: [coordinatesSimulate[200], coordinatesSimulate[coordinatesSimulate.length - 3]],
                 depart_at: this.state.depart_at,
             }
             // data.start.center = route[0];
@@ -427,135 +429,35 @@ class LocationForm extends Component {
 
         return formatter.format(date);
     }
-    /**
-     * function for setting up app state for simulation (admin)
-     * @param {*} id 
-     * @param {*} color 
-     * @param {*} route 
-     * @param {*} i1 
-     * @param {*} i2 
-     */
-    simulateMove(id, color, route, i1, i2) {
-        this.setState({
-            simulating: {
-                state: true,
-                id: id,
-                color: color,
-                route: route,
-                i1: i1,
-                i2: i2,
-            },
-            isSelectingDestination: false,
-        })
-    }
-    /**
-     * function for tracking user current location (rider)
-     */
-    trackingUser() {
-        if ('geolocation' in navigator) {
-            const marker = new mapboxgl.Marker();
-            navigator.geolocation.watchPosition((position) => {
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
 
-                console.log('Coordinates: [' + longitude + " , " + latitude + "]");
-
-                if (this.state.myPosition !== JSON.stringify([longitude, latitude])) {
-                    this.state.map.setCenter([longitude, latitude]);
-
-                    marker.remove();
-                    marker.setLngLat([longitude, latitude])
-                        .addTo(this.state.map);
-                    let route = {
-                        i1: 0,
-                        id: "1",
+    componentDidUpdate(prevState) {
+        if (prevState.riders != this.props.riders && this.props.riders.length > 0) {
+            for (let i = 0; i < this.props.riders.length; i++) {
+                this.state.map.setCenter(this.props.riders[0].route.geojson.waypoints[0].location);
+                if (!this.state.map.getSource(`${this.props.riders[0].route.id}`)) {
+                    this.drawRoute(this.props.riders[0].route.geojson.routes[0].geometry, this.props.riders[0].route.color, this.props.riders[0].route.id);
+                    for (let j = 0; j < this.props.riders[0].route.geojson.waypoints.length; j++) {
+                        console.log(this.props.riders[0].route.geojson.waypoints[j].location);
+                        const marker = new mapboxgl.Marker();
+                        marker.setLngLat(this.props.riders[0].route.geojson.waypoints[j].location).addTo(this.state.map)
                     }
-                    this.onSimulate(route, { lng: longitude, lat: latitude });
-                    this.setState({
-                        myPosition: JSON.stringify([longitude, latitude]),
-                    })
                 } else {
-                    console.log("User is not moving");
-                }
-            }, function (error) {
-                console.error('Error getting location:', error);
-            }, {
-                enableHighAccuracy: true,  // Request high accuracy
-                timeout: 20000,            // Set a timeout for the request
-                maximumAge: 1000           // Specify maximum age of cached position
-            });
-        } else {
-            console.log("Navigastions is not supported");
-        }
-    }
-    /**
-     * function for setting users role on the app in input(utility)
-     * @param {*} event 
-     */
-    onSettingRole(event) {
-        this.setState({
-            role: event.target.value
-        })
-    }
-    /**
-     * function for setting up user role in the state (utility)
-     */
-    setRole() {
-        if (this.state.role === "rider") {
-            this.setState({
-                isRider: true,
-                isSelectingRole: false,
-            })
-        } else {
-            this.setState({
-                isSelectingRole: false,
-            })
-        }
-    }
-    /**
-    * function for simulating user movement on the map by clicking (admin)
-    * @param {*} route 
-    * @param {*} userCoordinates 
-    */
-    async onSimulate(route, userCoordinates, first) {
-        if (this.calculateDistance(this.state.routes[route.i1][0], [userCoordinates.lng, userCoordinates.lat]) < 0.10) {
-            console.log("Reach Destination");
-            this.state.routes[route.i1].shift();
-        }
-        const updateCoordinates = (newCoordinates) => {
-            this.setState(prevState => ({
-                direction: prevState.direction.map(directionItem => ({
-                    ...directionItem,
-                    geojson: {
-                        ...directionItem.geojson,
-                        routes: directionItem.geojson.routes.map(routeItem => ({
-                            ...routeItem,
-                            geometry: {
-                                ...routeItem.geometry,
-                                coordinates: newCoordinates
-                            }
-                        }))
-                    }
-                }))
-            }), () => {
-                this.repaint(route.id, this.state.direction[0].geojson.routes[0]);
-            });
-        }
-        const coordinateClone = [...this.state.direction[0].geojson.routes[0].geometry.coordinates]
-        if (first) {
-            coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
-            updateCoordinates(coordinateClone);
-        } else {
-            let distance = this.calculateDistance([userCoordinates.lng, userCoordinates.lat], coordinateClone[1]);
-            if (distance <= 0.05) {
-                coordinateClone.shift();
-                coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
-            } else {
-                coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
-            }
-            updateCoordinates(coordinateClone);
-        }
+                    if (this.state.riderMarker.length > 0) {
+                        this.state.riderMarker[i].remove();
+                        this.state.riderMarker[i].setLngLat(this.props.riders[0].route.geojson.routes[0].geometry.coordinates[0]).addTo(this.state.map);
+                    } else {
+                        this.setState({
+                            riderMarker: [...this.state.riderMarker, new mapboxgl.Marker()]
+                        }, () => {
 
+                            this.state.riderMarker[i].setLngLat(this.props.riders[0].route.geojson.routes[0].geometry.coordinates[0]).addTo(this.state.map);
+
+                        });
+                    }
+                    this.repaint(this.props.riders[0].route.id, this.props.riders[0].route.geojson.routes[0]);
+                }
+            }
+        }
     }
     componentDidMount() {
 
@@ -577,155 +479,33 @@ class LocationForm extends Component {
             })
         })
         // this.onUserLocationPick();
-    }
 
-    /**
-     * function for simulating route drawing on the map (rider)
-     */
-    async drawRiderRoute() {
-        console.log("drawing route");
-        const geometry = {
-            type: "LineString",
-            coordinates: [
-                [121.38794, 14.441728],
-                [121.388176, 14.441853],
-                [121.388551, 14.442228],
-                [121.38874, 14.442218],
-                [121.389002, 14.441923],
-                [121.389091, 14.441894],
-                [121.389283, 14.441937],
-                [121.389875, 14.44229],
-                [121.389985, 14.442459],
-                [121.389965, 14.443022],
-                [121.390098, 14.443287],
-                [121.390177, 14.443344],
-                [121.390268, 14.443362],
-                [121.390754, 14.44314],
-                [121.391076, 14.443099],
-                [121.391156, 14.443057],
-                [121.391219, 14.44295],
-                [121.390903, 14.442132],
-                [121.390935, 14.441871],
-                [121.391019, 14.441771],
-                [121.391227, 14.441613],
-                [121.391391, 14.44155],
-                [121.391789, 14.441547],
-                [121.391907, 14.441514],
-                [121.392123, 14.44133],
-                [121.392382, 14.440961],
-                [121.392824, 14.440793],
-                [121.392892, 14.440725],
-                [121.392951, 14.440601],
-                [121.393078, 14.439893],
-                [121.39308, 14.439625],
-                [121.393147, 14.439466],
-                [121.393364, 14.439206],
-                [121.393754, 14.43889],
-                [121.393971, 14.43881],
-                [121.394379, 14.43885],
-                [121.394692, 14.438682],
-                [121.395048, 14.438582],
-                [121.395217, 14.438605],
-                [121.395299, 14.438691],
-                [121.395307, 14.439053],
-                [121.395442, 14.439282],
-                [121.395983, 14.439559],
-                [121.396156, 14.439711],
-                [121.396262, 14.439867],
-                [121.396282, 14.439995],
-                [121.396229, 14.440725],
-                [121.396144, 14.440864],
-                [121.395531, 14.441515],
-                [121.395448, 14.441739],
-                [121.395462, 14.441858],
-                [121.395519, 14.441943],
-                [121.396056, 14.442331],
-                [121.396201, 14.442346],
-                [121.396644, 14.442269],
-                [121.396894, 14.442301],
-                [121.397272, 14.442087],
-                [121.397485, 14.441863],
-                [121.397326, 14.441137],
-                [121.397367, 14.440777],
-                [121.397532, 14.440428],
-            ]
-        };
-
-        const marker = new mapboxgl.Marker();
-        marker.setLngLat([geometry.coordinates[0][0], geometry.coordinates[0][1]])
-            .addTo(this.state.map);
-        this.state.map.setCenter([geometry.coordinates[0][0], geometry.coordinates[0][1]]);
-
-        const markerDestination = new mapboxgl.Marker({ "color": "#b40219" });
-        markerDestination.setLngLat([121.39574491473905, 14.44202454820244])
-            .addTo(this.state.map);
-        const markerDestination2 = new mapboxgl.Marker({ "color": "#b40219" });
-        markerDestination2.setLngLat([121.394379, 14.43885])
-            .addTo(this.state.map);
-
-        let start = [121.388033, 14.441528];
-        let destination = [121.39574491473905, 14.44202454820244];
-        const data = {
-            start: {
-                center: start,
-            },
-            destination: [destination],
-            depart_at: this.state.depart_at,
-        }
-        let routes = [[[121.397532, 14.440428]]]
-        this.setState({
-            routes: routes,
-        })
-        let direction = [];
-        const geojson = await MapboxWatcher.search_direction(data);
-        const { color, id } = this.drawRoute(geojson.routes[0].geometry, "blue", "1");
-        direction.push({ geojson: geojson, color: color, id: id });
-        let result = await Promise.all(direction);
-        this.setState({
-            direction: result,
-        }, () => {
-            // this.simulateTracker();
-            this.trackingUser();
-        })
     }
 
     render() {
         MapboxWatcher.initiateWatch("location");
+        console.log("Trascking Rider", this.props.riders);
         return (
             <div className="location-form-container">
-                {
-                    this.state.isSelectingRole ?
-                        <div>
-                            <input className="input-starting-point margin-top-10" type="text" value={this.state.role} onChange={this.onSettingRole.bind(this)} placeholder="Your Role" />
-                            <br />
-                            <button className="location-search-button margin-top-10 button-green" onClick={this.setRole.bind(this)}>Enter</button>
-                        </div> : null
-                }
-                {
-                    this.state.isRider ?
-                        !this.state.isSelectingRole &&
-                        <div>
-                            <button className="location-search-button margin-top-10 button-green" onClick={this.drawRiderRoute.bind(this)}>Simulate</button>
-                        </div>
-                        :
-                        !this.state.isSelectingRole && <div className="search-box-container-location">
-                            <p style={{ textAlign: "center", fontSize: "16pt", fontWeight: "900", margin: "0" }}>Directions</p>
-                            <input type="text" name="starting_point_location" onChange={this.onLocationChange.bind(this)} value={this.state.starting_point_location} className="input-starting-point margin-top-10" placeholder="Your depot" />
-                            <input onChange={this.onNumberOfRiderChange.bind(this)} value={this.state.numberOfRiders} type="number" name="starting_point_location" className="input-starting-point margin-top-10" placeholder="Number of delivery man" />
-                            <button className="location-search-button margin-top-10 button-green" onClick={this.getDirection.bind(this)}>Go</button>
-                            <button className="location-search-button margin-top-10 button-green" onClick={this.selectDestination.bind(this)}>Select Drop Off location</button>
 
-                            <div className="suggested-place-container margin-top-10 ">
-                                {
-                                    MapboxWatcher.SuggestedPlace.map((item, index) => {
-                                        return (
-                                            <div className="location-suggested-item fontsize-11 " key={index} onClick={() => this.state.isSelectingDestination ? this.onSelectingDestination(item) : this.onSelectStartingPoint(item)}>{item.place_name}</div>
-                                        )
-                                    })
-                                }
-                            </div>
-                        </div>
-                }
+                <div className="search-box-container-location">
+                    <p style={{ textAlign: "center", fontSize: "16pt", fontWeight: "900", margin: "0" }}>Directions</p>
+                    <input type="text" name="starting_point_location" onChange={this.onLocationChange.bind(this)} value={this.state.starting_point_location} className="input-starting-point margin-top-10" placeholder="Your depot" />
+                    <input onChange={this.onNumberOfRiderChange.bind(this)} value={this.state.numberOfRiders} type="number" name="starting_point_location" className="input-starting-point margin-top-10" placeholder="Number of delivery man" />
+                    <button className="location-search-button margin-top-10 button-green" onClick={this.getDirection.bind(this)}>Go</button>
+                    <button className="location-search-button margin-top-10 button-green" onClick={this.selectDestination.bind(this)}>Select Drop Off location</button>
+
+                    <div className="suggested-place-container margin-top-10 ">
+                        {
+                            MapboxWatcher.SuggestedPlace.map((item, index) => {
+                                return (
+                                    <div className="location-suggested-item fontsize-11 " key={index} onClick={() => this.state.isSelectingDestination ? this.onSelectingDestination(item) : this.onSelectStartingPoint(item)}>{item.place_name}</div>
+                                )
+                            })
+                        }
+                    </div>
+                </div>
+
 
                 {
                     this.state.direction && this.state.direction.map((direction, index) => {
@@ -748,7 +528,6 @@ class LocationForm extends Component {
                                                         <p className="font-size-10">Duration (if not traffic): {this.seconds_to_hour(route.duration_typical)}</p>
                                                         <p className="font-size-10">Distance: {this.meter_to_kilamoter(route.distance)}</p>
                                                     </div>
-                                                    <button onClick={() => this.simulateMove(direction.id, direction.color, route, index, index2)}>Simulate</button>
                                                 </div>
                                             )
                                         })
@@ -766,4 +545,11 @@ class LocationForm extends Component {
 }
 
 
-export default LocationForm;
+export default withTracker(() => {
+    RouteWatcher.initiateWatch("location");
+    RouteWatcher.subscribe(PUBLICATION.TRACK_RIDER);
+    return {
+        riders: RouteWatcher.TrackingRider,
+    }
+
+})(LocationForm);

@@ -12,10 +12,11 @@ class RouteManager {
      * @returns 
      */
     assign(routes, riders) {
-        for (let i = 0; i < routes.length; i++) {
-            this.#db.insert({ riderId: riders[i].userid, route: routes[i] })
+        const result = []
+        for (let i = 0; i < riders.length; i++) {
+            result.push(this.#db.insert({ riderId: riders[i].userid, route: routes[i], status: "pending" }));
         }
-        return;
+        return result;
     }
 }
 

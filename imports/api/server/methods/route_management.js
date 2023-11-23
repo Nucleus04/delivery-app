@@ -9,12 +9,11 @@ class RouteManagement {
         return Meteor.methods({
             [ROUTING.ASSIGN]: function (routes) {
                 try {
-                    console.log("Routing.......", routes);
                     const queue = new QueueManager(profile);
                     const routeManager = new RouteManager(route);
                     let riderNeeded = routes.length;
                     const riders = queue.get_available_riders(riderNeeded);
-                    console.log("Available rider", riders);
+                    console.log("Available Riders", riders);
                     return routeManager.assign(routes, riders);
                 } catch (error) {
                     console.log(error);

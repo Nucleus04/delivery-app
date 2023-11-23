@@ -1,10 +1,7 @@
 import React, { Component } from "react";
 import mapboxgl from "mapbox-gl";
-import { withTracker } from "meteor/react-meteor-data";
 import RiderWatcher from "../../api/classes/client/RiderWatcher";
-import { PUBLICATION } from "../../api/common";
-import { Meteor } from "meteor/meteor";
-import { coordinatesSimulate } from "./simulation_data";
+import RiderOptions from "./RiderOptions";
 
 class Rider extends Component {
     constructor(props) {
@@ -13,83 +10,46 @@ class Rider extends Component {
         RiderWatcher.setWatcher(this, "rider")
         this.state = {
             map: null,
-            myRoute: null,
             isMapLoaded: false,
+            showOptions: false,
+            myMarker: null,
         }
     }
     /**
-        * Function for drawing route on the map (utility)
-        * @param {Object} geometry geometry object from mapbax direction api
-        * @param {*} defaultColor 
-        * @param {*} defaultId 
-        * @returns 
-        */
-    drawRoute(geometry, defaultColor = "blue", defaultId = null) {
-        let id = null;
-        if (defaultId) {
-            id = defaultId;
-        } else {
-            id = Math.random();
-        }
-        let color = null;
-        if (defaultColor) {
-            color = defaultColor;
-        } else {
-            color = this.getRandomHexColor();
-        }
-        this.state.map.addSource(`route-source`, {
-            type: 'geojson',
-            data: {
-                type: 'Feature',
-                properties: {},
-                geometry: geometry,
-            },
-        });
-        this.state.map.addLayer({
-            id: `${id}-layer`,
-            type: 'line',
-            source: `route-source`,
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            paint: {
-                'line-color': `${color}`,
-                'line-width': 3,
-            },
-        });
-
-        return {
-            color: color,
-            id: id,
-        };
-    }
-    /**
-     * function for tracking user current location (rider)
+     * focus and zoom to specified coordinates
+     * @param {Array} coordinates 
      */
-    trackingUser() {
+    focusMap(coordinates) {
+        this.state.map.setCenter(coordinates);
+        this.state.map.setZoom(15);
+    }
+    /**
+     * Add marker to specified coordinates in the map
+     * @param {*} coordinates 
+     */
+    addMarker(coordinates) {
+        const marker = new mapboxgl.Marker();
+        marker.setLngLat(coordinates)
+            .addTo(this.state.map);
+    }
+    trackUserLocationInitial() {
         if ('geolocation' in navigator) {
-            const marker = new mapboxgl.Marker();
-            navigator.geolocation.watchPosition((position) => {
+            const marker = new mapboxgl.Marker({ color: "violet" });
+            this.setState({
+                myMarker: marker,
+            });
+            navigator.geolocation.getCurrentPosition((position) => {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
 
-                console.log('Coordinates: [' + longitude + " , " + latitude + "]");
-
-                if (this.state.myPosition !== JSON.stringify([longitude, latitude])) {
-                    this.state.map.setCenter([longitude, latitude]);
-
-                    marker.remove();
-                    marker.setLngLat([longitude, latitude])
-                        .addTo(this.state.map);
-
-                    this.onSimulate({ lng: longitude, lat: latitude });
-                    this.setState({
-                        myPosition: JSON.stringify([longitude, latitude]),
-                    })
-                } else {
-                    console.log("User is not moving");
-                }
+                this.state.map.setCenter([longitude, latitude]);
+                this.state.map.setZoom(13);
+                marker.remove();
+                marker.setLngLat([longitude, latitude])
+                    .addTo(this.state.map);
+                this.setState({
+                    myPosition: JSON.stringify([longitude, latitude]),
+                })
             }, function (error) {
                 console.error('Error getting location:', error);
             }, {
@@ -101,138 +61,23 @@ class Rider extends Component {
             console.log("Navigastions is not supported");
         }
     }
-    /**
-    * function for simulating user movement on the map by clicking (admin)
-    * @param {*} route 
-    * @param {*} userCoordinates 
-    */
-    async onSimulate(userCoordinates) {
-        const updateCoordinates = (newCoordinates) => {
-            this.setState(prevState => ({
-                myRoute: {
-                    ...prevState.myRoute,
-                    routes: prevState.myRoute.routes.map(routeItem => ({
-                        ...routeItem,
-                        geometry: {
-                            ...routeItem.geometry,
-                            coordinates: newCoordinates
-                        }
-                    }))
 
-                }
-            }), () => {
-                this.repaint(this.props.route._id, this.state.myRoute.routes[0]);
-            });
-        }
-        const coordinateClone = [...this.state.myRoute.routes[0].geometry.coordinates]
+    onShowOptions() {
+        this.setState({
+            showOptions: !this.state.showOptions,
+        });
 
-        let distance = this.calculateDistance([userCoordinates.lng, userCoordinates.lat], coordinateClone[1]);
-        if (distance <= 0.05) {
-            coordinateClone.shift();
-            coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
-        } else {
-            coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
-        }
-        updateCoordinates(coordinateClone);
-
-
-    }
-    /**
-     * Functions for calculating distance between two location (utility)
-     * @param {*} coord1 
-     * @param {*} coord2 
-     * @returns 
-     */
-    calculateDistance(coord1, coord2) {
-        const earthRadius = 6371;
-        const lat1 = this.toRadians(coord1[1]);
-        const lon1 = this.toRadians(coord1[0]);
-        const lat2 = this.toRadians(coord2[1]);
-        const lon2 = this.toRadians(coord2[0]);
-        const dLat = lat2 - lat1;
-        const dLon = lon2 - lon1;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1) * Math.cos(lat2) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = earthRadius * c;
-        return distance;
-    }
-    toRadians(degrees) {
-        return degrees * (Math.PI / 180);
-    }
-    /**
-     * Function for generating random color (utility)
-     * @returns 
-     */
-    getRandomHexColor() {
-        const letters = "0123456789ABCDEF";
-        let color = "#";
-        for (let i = 0; i < 6; i++) {
-            color += letters[Math.floor(Math.random() * 16)];
-        }
-        return color;
-    }
-    /**
-     * function for repainting route line in the map (admin)
-     * @param {string} id 
-     * @param {*} route 
-     */
-    repaint(id, route) {
-        console.log("Repainting", id, route);
-        let source = this.state.map.getSource("route-source");
-        console.log("Source", source);
-        let data = {
-            type: 'Feature',
-            properties: {},
-            geometry: route.geometry,
-        }
-        source.setData(data);
-        this.state.map.triggerRepaint();
-
-
-    }
-    focusMap(coordinates) {
-        this.state.map.setCenter(coordinates);
-        this.state.map.setZoom(15);
-    }
-    addMarker(coordinates) {
-        const marker = new mapboxgl.Marker();
-        marker.setLngLat(coordinates)
-            .addTo(this.state.map);
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        if (prevProps.route != this.props.route) {
-            if (this.state.isMapLoaded) {
-                console.log('drawing once');
-                this.drawRoute(this.props.route.route.geojson.routes[0].geometry, null, this.props.route._id);
-                this.focusMap(this.props.route.route.geojson.waypoints[0].location);
-                for (let i = 0; i < this.props.route.route.geojson.waypoints.length; i++) {
-                    this.addMarker(this.props.route.route.geojson.waypoints[i].location);
-                }
-                this.setState({
-                    myRoute: this.props.route.route.geojson,
-                }, () => {
-                    this.trackingUser();
-                })
+        if (!this.state.showOptions) {
+            const target = document.getElementsByClassName("rider-options-container")[0];
+            console.log(target);
+            if (target) {
+                target.style.height = "270px"
             }
-        }
-
-        if (prevState.isMapLoaded !== this.state.isMapLoaded) {
-            if (this.state.isMapLoaded && this.props.route) {
-                console.log('drawing once');
-                this.drawRoute(this.props.route.route.geojson.routes[0].geometry, null, this.props.route._id);
-                this.focusMap(this.props.route.route.geojson.waypoints[0].location);
-                for (let i = 0; i < this.props.route.route.geojson.waypoints.length; i++) {
-                    this.addMarker(this.props.route.route.geojson.waypoints[i].location);
-                }
-                this.setState({
-                    myRoute: this.props.route.route.geojson,
-                }, () => {
-                    this.trackingUser();
-                })
+        } else {
+            const target = document.getElementsByClassName("rider-options-container")[0];
+            console.log(target);
+            if (target) {
+                target.style.height = "0px";
             }
         }
     }
@@ -257,45 +102,24 @@ class Rider extends Component {
 
     }
 
-    async simulateTracker() {
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-        console.log("simulating", coordinatesSimulate);
-        const marker = new mapboxgl.Marker();
-        marker.setLngLat(coordinatesSimulate[0])
-            .addTo(this.state.map);
-        for (let i = 0; i < coordinatesSimulate.length; i++) {
-
-            this.state.map.setCenter(coordinatesSimulate[i]);
-            marker.remove();
-            marker.setLngLat(coordinatesSimulate[i])
-                .addTo(this.state.map);
-
-            this.onSimulate({ lng: coordinatesSimulate[i][0], lat: coordinatesSimulate[i][1] });
-            this.setState({
-                myPosition: JSON.stringify(coordinatesSimulate[i]),
-            })
-            await delay(200);
-        }
-
-    }
-
     render() {
         return (
             <div className="location-form-container">
-                <p>Rider Rider</p>
-                <button onClick={this.simulateTracker.bind(this)}>Simulate</button>
+                <div className="justify-item">
+                    {
+                        this.state.showOptions ?
+                            <svg onClick={this.onShowOptions.bind(this)} xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-arrow-down-square-fill" viewBox="0 0 16 16"> <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2zm6.5 4.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 1 1 .708-.708L7.5 10.293V4.5a.5.5 0 0 1 1 0z" /> </svg>
+                            :
+                            <svg onClick={this.onShowOptions.bind(this)} xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-arrow-up-square-fill" viewBox="0 0 16 16"> <path d="M2 16a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2zm6.5-4.5V5.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 5.707V11.5a.5.5 0 0 0 1 0z" /> </svg>
+                    }
+                </div>
+                <div className={`rider-options-container`}>
+                    <RiderOptions isMapLoaded={this.state.isMapLoaded} map={this.state.map} myMarker={this.state.myMarker} />
+                </div>
             </div>
         )
     }
 }
 
 
-export default withTracker(() => {
-    RiderWatcher.initiateWatch("rider")
-    RiderWatcher.subscribe(PUBLICATION.GET_ROUTE, Meteor.userId());
-    return {
-        route: RiderWatcher.getRoutes()[0],
-    }
-})(Rider);
+export default Rider;
