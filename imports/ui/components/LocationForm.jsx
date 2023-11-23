@@ -176,17 +176,29 @@ class LocationForm extends Component {
             routes: routes,
         });
         let direction = [];
-        for (const route of routes) {
+        let coord = [
+            [coordinatesSimulate[0], coordinatesSimulate[200], coordinatesSimulate[coordinatesSimulate.length - 3]],
+            [coordinatesSimulate[0], [121.386322, 14.440838], [121.38482, 14.441013], [121.383538, 14.44136]],
+        ]
+        // for (const route of routes) {
+        for (const route of coord) {
             const data = {
                 start: {
-                    center: coordinatesSimulate[0],
+                    center: "",
                 },
-                destination: [coordinatesSimulate[200], coordinatesSimulate[coordinatesSimulate.length - 3]],
+                destination: "",
                 depart_at: this.state.depart_at,
             }
-            // data.start.center = route[0];
-            // route.shift();
-            // data.destination = route;
+            // const data = {
+            //     start: {
+            //         center: coordinatesSimulate[0],
+            //     },
+            //     destination: [coordinatesSimulate[200], coordinatesSimulate[coordinatesSimulate.length - 3]],
+            //     depart_at: this.state.depart_at,
+            // }
+            data.start.center = route[0];
+            route.shift();
+            data.destination = route;
             const geojson = await MapboxWatcher.search_direction(data);
             const { color, id } = this.drawRoute(geojson.routes[0].geometry);
             direction.push({ geojson: geojson, color: color, id: id });
@@ -433,28 +445,16 @@ class LocationForm extends Component {
     componentDidUpdate(prevState) {
         if (prevState.riders != this.props.riders && this.props.riders.length > 0) {
             for (let i = 0; i < this.props.riders.length; i++) {
-                this.state.map.setCenter(this.props.riders[0].route.geojson.waypoints[0].location);
-                if (!this.state.map.getSource(`${this.props.riders[0].route.id}`)) {
-                    this.drawRoute(this.props.riders[0].route.geojson.routes[0].geometry, this.props.riders[0].route.color, this.props.riders[0].route.id);
-                    for (let j = 0; j < this.props.riders[0].route.geojson.waypoints.length; j++) {
-                        console.log(this.props.riders[0].route.geojson.waypoints[j].location);
+                console.log("Loop", i);
+                this.state.map.setCenter(this.props.riders[i].route.geojson.waypoints[0].location);
+                if (!this.state.map.getSource(`${this.props.riders[i].route.id}`)) {
+                    this.drawRoute(this.props.riders[i].route.geojson.routes[0].geometry, this.props.riders[i].route.color, this.props.riders[i].route.id);
+                    for (let j = 0; j < this.props.riders[i].route.geojson.waypoints.length; j++) {
                         const marker = new mapboxgl.Marker();
-                        marker.setLngLat(this.props.riders[0].route.geojson.waypoints[j].location).addTo(this.state.map)
+                        marker.setLngLat(this.props.riders[i].route.geojson.waypoints[j].location).addTo(this.state.map)
                     }
                 } else {
-                    if (this.state.riderMarker.length > 0) {
-                        this.state.riderMarker[i].remove();
-                        this.state.riderMarker[i].setLngLat(this.props.riders[0].route.geojson.routes[0].geometry.coordinates[0]).addTo(this.state.map);
-                    } else {
-                        this.setState({
-                            riderMarker: [...this.state.riderMarker, new mapboxgl.Marker()]
-                        }, () => {
-
-                            this.state.riderMarker[i].setLngLat(this.props.riders[0].route.geojson.routes[0].geometry.coordinates[0]).addTo(this.state.map);
-
-                        });
-                    }
-                    this.repaint(this.props.riders[0].route.id, this.props.riders[0].route.geojson.routes[0]);
+                    this.repaint(this.props.riders[i].route.id, this.props.riders[i].route.geojson.routes[0]);
                 }
             }
         }
@@ -484,7 +484,6 @@ class LocationForm extends Component {
 
     render() {
         MapboxWatcher.initiateWatch("location");
-        console.log("Trascking Rider", this.props.riders);
         return (
             <div className="location-form-container">
 

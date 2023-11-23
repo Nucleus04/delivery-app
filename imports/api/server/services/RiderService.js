@@ -3,12 +3,12 @@
 
 class RiderServices {
 
-    updateDeliveryStatus(db, status, riderId) {
-        return db.update({ riderId: riderId }, { $set: { status: status } });
+    updateDeliveryStatus(db, status, routeId) {
+        return db.update({ _id: routeId }, { $set: { status: status } });
     }
 
-    updateRidersGeojson(db, geojson, riderId) {
-        return db.update({ riderId: riderId }, { $set: { ["route.geojson"]: geojson } });
+    updateRidersGeojson(db, geojson, routeId) {
+        return db.update({ _id: routeId }, { $set: { ["route.geojson"]: geojson } });
     }
 }
 

@@ -7,14 +7,14 @@ import { route } from "../../db";
 class RiderMethods {
     methods() {
         return Meteor.methods({
-            [RIDER.UPDATE_GEOJSON]: function ({ riderId, geojson }) {
-                console.log("Updating Rider position", riderId, geojson);
-                return RiderService.updateRidersGeojson(route, geojson, riderId);
+            [RIDER.UPDATE_GEOJSON]: function ({ routeId, geojson }) {
+                console.log("Updating Rider position", routeId, geojson);
+                return RiderService.updateRidersGeojson(route, geojson, routeId);
             },
 
-            [RIDER.UPDATE_STATUS]: function ({ riderId, status }) {
-                console.log("Updating status");
-                return RiderService.updateDeliveryStatus(route, status, riderId);
+            [RIDER.UPDATE_STATUS]: function ({ routeId, status }) {
+                console.log("Updating status", routeId, status);
+                return RiderService.updateDeliveryStatus(route, status, routeId);
             }
         })
     }

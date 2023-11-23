@@ -77,15 +77,15 @@ class RiderOptions extends Component {
     */
     trackingUser() {
         if ('geolocation' in navigator) {
-
+            let coord = [];
             navigator.geolocation.watchPosition((position) => {
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
 
                 console.log('Coordinates: [' + longitude + " , " + latitude + "]");
-
+                coord.push([longitude, latitude]);
                 if (this.state.myPosition !== JSON.stringify([longitude, latitude])) {
-
+                    console.log(coord);
                     this.state.map.setCenter([longitude, latitude]);
 
                     this.state.myMarker.remove();
@@ -217,8 +217,8 @@ class RiderOptions extends Component {
             id: id,
         };
     }
-    updateRiderLocationServer(geojson) {
-        RiderWatcher.updateRidersGeojson(geojson);
+    updateRiderLocationServer(routeId, geojson) {
+        RiderWatcher.updateRidersGeojson(routeId, geojson);
     }
     /**
    * function for updating route line in the map when user change location
@@ -241,7 +241,7 @@ class RiderOptions extends Component {
 
                 }
             }), () => {
-                this.updateRiderLocationServer(this.state.myRoute);
+                this.updateRiderLocationServer(this.props.route[0]._id, this.state.myRoute);
                 this.repaint(myRouteId, this.state.myRoute.routes[0]);
             });
         }
@@ -266,9 +266,7 @@ class RiderOptions extends Component {
 
         if (coordinateClone.length > 1) distance = this.calculateDistance([userCoordinates.lng, userCoordinates.lat], coordinateClone[1]);
         if (distance <= 20) {
-            // if (coordinateClone.length > 2) {
             coordinateClone.shift();
-            // }
             coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
         } else {
             coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
@@ -359,8 +357,8 @@ class RiderOptions extends Component {
         }
 
     }
-    updateDeliveryStatus(status) {
-        RiderWatcher.updateDeliveryStatus(status);
+    updateDeliveryStatus(routeId, status) {
+        RiderWatcher.updateDeliveryStatus(routeId, status);
     }
     /**
      * function will triggered when rider want to start delivering parcel
@@ -376,11 +374,13 @@ class RiderOptions extends Component {
             for (let i = 0; i < this.props.route[0].route.geojson.waypoints.length; i++) {
                 if (i != 0) this.addMarker(this.props.route[0].route.geojson.waypoints[i].location);
             }
-            // this.trackingUser();
-            this.updateDeliveryStatus("ongoing");
+            this.trackingUser();
+            this.updateDeliveryStatus(this.props.route[0]._id, "ongoing");
         }
     }
-
+    onCompletedRoute() {
+        this.updateDeliveryStatus(this.props.route[0]._id, 'delivered');
+    }
     componentDidUpdate(prevProps) {
         if (prevProps.isMapLoaded !== this.props.isMapLoaded) {
             this.setState({
@@ -424,7 +424,9 @@ class RiderOptions extends Component {
                                         <p className="font-size-10">Duration: {this.seconds_to_hour(item.route.geojson.routes[0].duration)}</p>
                                         <p className="font-size-10">Distance: {this.meter_to_kilamoter(this.state.myRoute.routes[0].distance)}</p>
                                     </div>
-                                    <button onClick={this.onDeliverClick.bind(this)}>Deliver</button> <button onClick={this.simulateTracker.bind(this)}>Simulate</button>
+                                    <button onClick={this.onDeliverClick.bind(this)}>Deliver</button>
+                                    <button onClick={this.simulateTracker.bind(this)}>Simulate</button>
+                                    <button onClick={this.onCompletedRoute.bind(this)}>Completed</button>
                                 </div>
                             )
                         })

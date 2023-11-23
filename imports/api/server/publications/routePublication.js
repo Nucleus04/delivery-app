@@ -7,7 +7,7 @@ class RoutePublication {
     publication() {
         return Meteor.publish(PUBLICATION.GET_ROUTE, (riderId) => {
             console.log(riderId);
-            return route.find({ riderId: riderId });
+            return route.find({ riderId: riderId, status: { $in: ["pending", "ongoing"] } });
         })
     }
 
