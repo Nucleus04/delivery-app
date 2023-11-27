@@ -20,6 +20,7 @@ class Server {
 
             RoutePublication.publication();
             RoutePublication.trackingRider();
+            RoutePublication.getRoutes();
         })
     }
 }

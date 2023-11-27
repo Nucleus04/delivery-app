@@ -5,8 +5,15 @@ import MapboxWatcher from "../api/classes/client/MapboxWatcher";
 import Direction from "./components/Directions";
 import AccountsWatcher from "../api/classes/client/AccountsWatcher";
 import Rider from "./components/Rider";
+import { useParams } from "react-router-dom";
 
-class Home extends Component {
+function Home() {
+    const { routeClass } = useParams();
+    return (
+        <HomeComponent params={routeClass} />
+    )
+}
+class HomeComponent extends Component {
     constructor(props) {
         super(props);
         this.props = props;
@@ -18,7 +25,7 @@ class Home extends Component {
         }
     }
     async componentDidMount() {
-        console.log("Mounting home");
+        console.log("Mounting home", this.props.params);
         let user = await AccountsWatcher.retrieveUser();
         this.setState({
             role: user.role,

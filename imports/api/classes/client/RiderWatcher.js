@@ -14,6 +14,10 @@ class RiderWatcher extends Watcher {
         return route.find({}).fetch();
     }
 
+    getOngoingRoute() {
+        return route.find({ status: "ongoing" }).fetch();
+    }
+
     updateRidersGeojson(routeId, geojson) {
         return new Promise((resolve, reject) => {
             this.Parent.callFunc(RIDER.UPDATE_GEOJSON, { routeId: routeId, geojson: geojson }).then((result) => {
@@ -28,7 +32,7 @@ class RiderWatcher extends Watcher {
 
     updateDeliveryStatus(routeId, status) {
         return new Promise((resolve, reject) => {
-            this.Parent.callFunc(RIDER.UPDATE_STATUS, { routeId: routeId, status: status }).then((result) => {
+            this.Parent.callFunc(RIDER.UPDATE_STATUS, { routeId: routeId, status: status, riderId: Meteor.userId() }).then((result) => {
                 console.log(result);
             }).catch((error) => {
                 console.log(error);

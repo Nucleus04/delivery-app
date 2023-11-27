@@ -1,3 +1,6 @@
+import { profile } from "../../db";
+import RiderService from "./RiderService";
+import { Random } from "meteor/random";
 
 class RouteManager {
     #db = null;
@@ -13,8 +16,17 @@ class RouteManager {
      */
     assign(routes, riders) {
         const result = []
+        const routeClass = Random.id();
         for (let i = 0; i < riders.length; i++) {
-            result.push(this.#db.insert({ riderId: riders[i].userid, route: routes[i], status: "pending" }));
+            const data = {
+                riderId: riders[i].userid,
+                route: routes[i],
+                status: "pending",
+                route_class: routeClass,
+                created_at: new Date()
+            }
+            result.push(this.#db.insert(data));
+            RiderService.updateRiderAvailability(profile, false, riders[i].userid);
         }
         return result;
     }

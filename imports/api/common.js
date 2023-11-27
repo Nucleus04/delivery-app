@@ -12,6 +12,7 @@ export const ROUTING = {
 export const PUBLICATION = {
     GET_ROUTE: 'get.route.for.rider',
     TRACK_RIDER: 'track.rider.location',
+    GET_ROUTES_ADMIN: 'get.all.route',
 }
 
 

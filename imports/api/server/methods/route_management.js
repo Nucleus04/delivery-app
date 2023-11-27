@@ -13,10 +13,12 @@ class RouteManagement {
                     const routeManager = new RouteManager(route);
                     let riderNeeded = routes.length;
                     const riders = queue.get_available_riders(riderNeeded);
-                    console.log("Available Riders", riders);
+                    if (riders.length < riderNeeded) {
+                        throw new Error("Insufficient available riders");
+                    }
                     return routeManager.assign(routes, riders);
                 } catch (error) {
-                    console.log(error);
+                    throw new Error(error);
                 }
             }
         })

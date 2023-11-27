@@ -14,7 +14,16 @@ class RoutePublication {
 
     trackingRider() {
         return Meteor.publish(PUBLICATION.TRACK_RIDER, () => {
-            return route.find({ status: "ongoing" });
+            return route.find({ status: { $in: ["pending", "ongoing"] } });
+        })
+    }
+
+
+    getRoutes() {
+        return Meteor.publish(PUBLICATION.GET_ROUTES_ADMIN, () => {
+            console.log('Getting all routes');
+            console.log(route.find({}).fetch());
+            return route.find({});
         })
     }
 }

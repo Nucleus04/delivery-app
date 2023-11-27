@@ -1,13 +1,23 @@
-import React, { Component } from "react";
+import React, { Component, useEffect } from "react";
 import MapboxWatcher from "../../api/classes/client/MapboxWatcher";
 import mapboxgl from "mapbox-gl";
 import RouteWatcher from "../../api/classes/client/RouteWatcher";
 import { withTracker } from "meteor/react-meteor-data";
+import { ReactiveVar } from "meteor/reactive-var";
 import { PUBLICATION } from "../../api/common";
-import RiderWatcher from "../../api/classes/client/RiderWatcher";
 import { coordinatesSimulate } from "./simulation_data";
+import { useNavigate, useParams } from "react-router-dom";
 
-class LocationForm extends Component {
+
+function LocationForm({ riders }) {
+    const navigate = useNavigate();
+    console.log("Functionnnnnnnn", riders);
+
+    return (
+        <LocationFormComponent navigate={navigate} riders={riders} />
+    )
+}
+class LocationFormComponent extends Component {
     constructor(props) {
         super(props);
         this.props = props;
@@ -21,7 +31,7 @@ class LocationForm extends Component {
             marker_reference: null,
             geojson: null,
             parcelcoordinates: [],
-            direction: null,
+            direction: [],
             numberOfRiders: "",
             routes: null,
             depart_at: null,
@@ -29,8 +39,7 @@ class LocationForm extends Component {
             simulating: {
                 state: false
             },
-            myPosition: null,
-            riderMarker: [],
+            mapIsReady: false,
         }
 
     }
@@ -205,7 +214,7 @@ class LocationForm extends Component {
         }
 
         let result = await Promise.all(direction);
-        this.assignRoute(result);
+
 
         this.setState({
             direction: result,
@@ -215,8 +224,9 @@ class LocationForm extends Component {
      * Send request to assign route in backend to rider
      * @param {Array} route optimize routes
      */
-    assignRoute(route) {
-        RouteWatcher.assign(route);
+    async assignRoute(route) {
+        await RouteWatcher.assign(route);
+        return;
     }
     /**
      * function for marking parcel locations in the map via click event (admin)
@@ -441,23 +451,91 @@ class LocationForm extends Component {
 
         return formatter.format(date);
     }
+    async saveRoute() {
+        if (this.state.direction.length <= 0) {
+            alert("No route has been generated yet");
+        } else {
+            console.log("assigning");
+            this.assignRoute(this.state.direction);
+            console.log("finish assigning");
+            this.props.navigate("/manage");
+        }
+    }
 
-    componentDidUpdate(prevState) {
-        if (prevState.riders != this.props.riders && this.props.riders.length > 0) {
-            for (let i = 0; i < this.props.riders.length; i++) {
-                console.log("Loop", i);
-                this.state.map.setCenter(this.props.riders[i].route.geojson.waypoints[0].location);
-                if (!this.state.map.getSource(`${this.props.riders[i].route.id}`)) {
-                    this.drawRoute(this.props.riders[i].route.geojson.routes[0].geometry, this.props.riders[i].route.color, this.props.riders[i].route.id);
-                    for (let j = 0; j < this.props.riders[i].route.geojson.waypoints.length; j++) {
-                        const marker = new mapboxgl.Marker();
-                        marker.setLngLat(this.props.riders[i].route.geojson.waypoints[j].location).addTo(this.state.map)
+    gotoManagementPage() {
+        this.props.navigate("/manage");
+    }
+    componentDidUpdate(prevState, prevProps) {
+        if (prevState.riders != this.props.riders) {
+            if (this.state.mapIsReady) {
+                const direction = [];
+                if (this.props.riders.length > 0) {
+                    for (let i = 0; i < this.props.riders.length; i++) {
+
+
+                        let directioncopy = this.props.riders[i].route;
+                        directioncopy.status = this.props.riders[i].status;
+                        direction.push(directioncopy);
+
+                        if (!this.state.map.getSource(`${this.props.riders[i].route.id}`)) {
+                            this.drawRoute(this.props.riders[i].route.geojson.routes[0].geometry, this.props.riders[i].route.color, this.props.riders[i].route.id);
+                            for (let j = 0; j < this.props.riders[i].route.geojson.waypoints.length; j++) {
+                                let marker = null;
+                                if (j == 0) {
+                                    marker = new mapboxgl.Marker({ color: "red" });
+                                } else {
+                                    marker = new mapboxgl.Marker();
+                                }
+                                marker.setLngLat(this.props.riders[i].route.geojson.waypoints[j].location).addTo(this.state.map)
+                            }
+                        } else {
+                            this.repaint(this.props.riders[i].route.id, this.props.riders[i].route.geojson.routes[0]);
+                        }
                     }
-                } else {
-                    this.repaint(this.props.riders[i].route.id, this.props.riders[i].route.geojson.routes[0]);
                 }
+                this.setState({
+                    direction: direction,
+                })
             }
         }
+
+
+        this.state.map.on('load', () => {
+            console.log("Map is ready");
+            this.setState({
+                mapIsReady: true,
+            })
+            const direction = [];
+            if (this.props.riders.length > 0) {
+                for (let i = 0; i < this.props.riders.length; i++) {
+
+                    this.state.map.setCenter(this.props.riders[i].route.geojson.waypoints[0].location);
+                    this.state.map.setZoom(13);
+                    let directioncopy = this.props.riders[i].route;
+                    directioncopy.status = this.props.riders[i].status;
+                    direction.push(directioncopy);
+
+                    if (!this.state.map.getSource(`${this.props.riders[i].route.id}`)) {
+                        this.drawRoute(this.props.riders[i].route.geojson.routes[0].geometry, this.props.riders[i].route.color, this.props.riders[i].route.id);
+                        for (let j = 0; j < this.props.riders[i].route.geojson.waypoints.length; j++) {
+                            let marker = null;
+                            if (j == 0) {
+                                marker = new mapboxgl.Marker({ color: "red" });
+                            } else {
+                                marker = new mapboxgl.Marker();
+                            }
+                            marker.setLngLat(this.props.riders[i].route.geojson.waypoints[j].location).addTo(this.state.map)
+                        }
+                    } else {
+                        this.repaint(this.props.riders[i].route.id, this.props.riders[i].route.geojson.routes[0]);
+                    }
+                }
+            }
+            this.setState({
+                direction: direction,
+            })
+        })
+
     }
     componentDidMount() {
 
@@ -477,12 +555,18 @@ class LocationForm extends Component {
                 center: [-74.5, 40],
                 zoom: 9,
             })
-        })
+        }, () => {
+            console.log("Map is set");
+
+        });
+
         // this.onUserLocationPick();
+
 
     }
 
     render() {
+        console.log(this.state.routes);
         MapboxWatcher.initiateWatch("location");
         return (
             <div className="location-form-container">
@@ -491,8 +575,10 @@ class LocationForm extends Component {
                     <p style={{ textAlign: "center", fontSize: "16pt", fontWeight: "900", margin: "0" }}>Directions</p>
                     <input type="text" name="starting_point_location" onChange={this.onLocationChange.bind(this)} value={this.state.starting_point_location} className="input-starting-point margin-top-10" placeholder="Your depot" />
                     <input onChange={this.onNumberOfRiderChange.bind(this)} value={this.state.numberOfRiders} type="number" name="starting_point_location" className="input-starting-point margin-top-10" placeholder="Number of delivery man" />
-                    <button className="location-search-button margin-top-10 button-green" onClick={this.getDirection.bind(this)}>Go</button>
+                    <button className="location-search-button margin-top-10 button-green" onClick={this.getDirection.bind(this)}>Generate routes</button>
                     <button className="location-search-button margin-top-10 button-green" onClick={this.selectDestination.bind(this)}>Select Drop Off location</button>
+                    <button className="location-search-button margin-top-10 button-green" onClick={this.saveRoute.bind(this)}>Save route</button>
+                    <button className="location-search-button margin-top-10 button-green" onClick={this.gotoManagementPage.bind(this)}>Go to admin</button>
 
                     <div className="suggested-place-container margin-top-10 ">
                         {
@@ -512,7 +598,7 @@ class LocationForm extends Component {
                             <div className="route-container margin-top-10" key={index}>
 
                                 <div className="route-item-container margin-top-5" style={{ backgroundColor: direction.color }}>
-                                    <p className="font-size-10">Rider {index + 1}</p>
+                                    <p className="font-size-10">Rider {index + 1} - {direction.status ? <span style={{ color: "white" }}><b>{direction.status}</b></span> : ""}</p>
                                     <input type="datetime-local" placeholder="departure" onChange={this.onDepartureChange.bind(this)} /> <button onClick={() => this.onEnter(index, direction.id)}>depart</button>
 
                                     {
@@ -545,10 +631,15 @@ class LocationForm extends Component {
 
 
 export default withTracker(() => {
+    const routeClass = localStorage.getItem("routeClass");
+    console.log("Routeclass in withtracker", routeClass);
     RouteWatcher.initiateWatch("location");
-    RouteWatcher.subscribe(PUBLICATION.TRACK_RIDER);
+    // RouteWatcher.subscribe(PUBLICATION.TRACK_RIDER);
+    RouteWatcher.subscribe(PUBLICATION.GET_ROUTES_ADMIN);
     return {
-        riders: RouteWatcher.TrackingRider,
+        riders: RouteWatcher.getRoutes(routeClass ? routeClass : null),
     }
+
+
 
 })(LocationForm);

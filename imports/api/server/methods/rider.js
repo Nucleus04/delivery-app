@@ -12,9 +12,9 @@ class RiderMethods {
                 return RiderService.updateRidersGeojson(route, geojson, routeId);
             },
 
-            [RIDER.UPDATE_STATUS]: function ({ routeId, status }) {
-                console.log("Updating status", routeId, status);
-                return RiderService.updateDeliveryStatus(route, status, routeId);
+            [RIDER.UPDATE_STATUS]: function ({ routeId, status, riderId }) {
+                console.log("Updating status", routeId, status, riderId);
+                return RiderService.updateDeliveryStatus(route, status, routeId, riderId);
             }
         })
     }

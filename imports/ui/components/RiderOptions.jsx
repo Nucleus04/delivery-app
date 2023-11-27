@@ -177,7 +177,7 @@ class RiderOptions extends Component {
        * @param {*} defaultId 
        * @returns 
        */
-    drawRoute(geometry, defaultColor = "blue", defaultId = null) {
+    drawRoute(geometry, defaultColor = null, defaultId = null) {
         let id = null;
         if (defaultId) {
             id = defaultId;
@@ -265,7 +265,7 @@ class RiderOptions extends Component {
         let distance = 0;
 
         if (coordinateClone.length > 1) distance = this.calculateDistance([userCoordinates.lng, userCoordinates.lat], coordinateClone[1]);
-        if (distance <= 20) {
+        if (distance <= 30) {
             coordinateClone.shift();
             coordinateClone[0] = [userCoordinates.lng, userCoordinates.lat];
         } else {
@@ -353,10 +353,11 @@ class RiderOptions extends Component {
             this.setState({
                 myPosition: JSON.stringify(coordinatesSimulate[i]),
             })
-            await delay(200);
+            await delay(600);
         }
 
     }
+
     updateDeliveryStatus(routeId, status) {
         RiderWatcher.updateDeliveryStatus(routeId, status);
     }
@@ -370,7 +371,7 @@ class RiderOptions extends Component {
             const marker = new mapboxgl.Marker({ color: "red" });
             marker.setLngLat(this.state.myRoute.waypoints[0].location)
                 .addTo(this.state.map);
-            this.drawRoute(this.props.route[0].route.geojson.routes[0].geometry, "blue", myRouteId);
+            this.drawRoute(this.props.route[0].route.geojson.routes[0].geometry, this.props.route[0].route.color, myRouteId);
             for (let i = 0; i < this.props.route[0].route.geojson.waypoints.length; i++) {
                 if (i != 0) this.addMarker(this.props.route[0].route.geojson.waypoints[i].location);
             }
@@ -380,6 +381,9 @@ class RiderOptions extends Component {
     }
     onCompletedRoute() {
         this.updateDeliveryStatus(this.props.route[0]._id, 'delivered');
+        this.setState({
+            isStartingDelivery: false,
+        })
     }
     componentDidUpdate(prevProps) {
         if (prevProps.isMapLoaded !== this.props.isMapLoaded) {
@@ -401,11 +405,28 @@ class RiderOptions extends Component {
                 map: this.props.map,
             })
         }
+
+        if (prevProps.ongoingRoute != this.props.ongoingRoute && this.props.isMapLoaded) {
+            if (this.props.ongoingRoute.length > 0) {
+                console.log("There is ongoing Route", this.props.ongoingRoute);
+                const marker = new mapboxgl.Marker({ color: "red" });
+                marker.setLngLat(this.props.ongoingRoute[0].route.geojson.waypoints[0].location)
+                    .addTo(this.state.map);
+                if (this.state.map.getSource(`${this.props.ongoingRoute[0].route.id}`)) {
+                    this.drawRoute(this.props.ongoingRoute[0].route.geojson.routes[0].geometry, this.props.ongoingRoute[0].route.color, myRouteId);
+                }
+                for (let i = 0; i < this.props.ongoingRoute[0].route.geojson.waypoints.length; i++) {
+                    if (i != 0) this.addMarker(this.props.ongoingRoute[0].route.geojson.waypoints[i].location);
+                }
+                this.trackingUser();
+            }
+        }
     }
     componentDidMount() {
         this.trackUserLocationInitial();
     }
     render() {
+        console.log("Ongoing ROute", this.props.ongoingRoute);
         return (
             <div className="option-main-container">
                 <div className="assigned-route-container">
@@ -444,5 +465,6 @@ export default withTracker(() => {
     RiderWatcher.subscribe(PUBLICATION.GET_ROUTE, Meteor.userId());
     return {
         route: RiderWatcher.getRoutes(),
+        ongoingRoute: RiderWatcher.getOngoingRoute(),
     }
 })(RiderOptions);
